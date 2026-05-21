@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "TCG Tracker",
+    "slug": "tcg-tracker",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "tcgtracker",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourname.tcgtracker",
+      "infoPlist": {
+        "NSCameraUsageDescription": "TCG Tracker needs camera access to scan cards and capture transaction images.",
+        "NSPhotoLibraryUsageDescription": "TCG Tracker needs photo library access to attach images of cards, cash, and payment screenshots to your transactions."
+      }
+    },
+    "android": {
+      "package": "com.yourname.tcgtracker",
+      "permissions": ["CAMERA", "READ_EXTERNAL_STORAGE"]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow TCG Tracker to access your camera to scan cards."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow TCG Tracker to access your photos to attach transaction images."
+        }
+      ]
+    ],
+    "extra": {
+      "supabaseUrl": "YOUR_SUPABASE_URL",
+      "supabaseAnonKey": "YOUR_SUPABASE_ANON_KEY",
+      "pokemonTcgApiKey": "OPTIONAL_POKEMONTCG_IO_KEY"
+    }
+  }
+}
