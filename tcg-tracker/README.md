@@ -22,33 +22,68 @@ Built with **Expo (React Native) + Supabase**.
 
 ## Setup
 
-### 1. Install deps
+### Prerequisites
+
+- **Node.js ≥ 20.19.4** — check with `node -v`, download from [nodejs.org](https://nodejs.org/en/download) if needed
+- **Expo Go** on your device, or Xcode installed for the iOS Simulator
+
+> **Note:** `app.json` is gitignored because it holds your Supabase credentials. You'll create your own from the example file below.
+
+### 1. Clone and install
 
 ```bash
-cd tcg-tracker
+git clone https://github.com/engineerdragon01/TCG_Transaction_Tracker.git
+cd TCG_Transaction_Tracker/tcg-tracker
 npm install
-npx expo install --fix
 ```
 
-### 2. Supabase
+### 2. Create app.json
 
-1. Create a free project at [supabase.com](https://supabase.com).
-2. In the SQL editor, run the contents of `sql/schema.sql`.
-3. Storage → New bucket → name it `transaction-images`, set to **Private**.
-4. Re-open `sql/schema.sql` and run the three commented-out `storage.objects` policies at the bottom.
-5. Copy your Project URL and `anon` public key into `app.json` → `expo.extra.supabaseUrl` / `supabaseAnonKey`.
+```bash
+cp app.json.example app.json
+```
 
-### 3. Pokémon TCG API (optional)
+### 3. Create a Supabase project
 
-Works without a key, but free keys at [dev.pokemontcg.io](https://dev.pokemontcg.io/) get higher rate limits. Drop yours in `app.json` → `expo.extra.pokemonTcgApiKey`.
+1. Sign up at [supabase.com](https://supabase.com) → **New project** (free tier is fine).
+2. Wait ~2 min for provisioning, then go to **SQL Editor → New query**.
+3. Paste the entire contents of `sql/schema.sql` and click **Run**.
+4. Go to **Storage → New bucket**, name it `transaction-images`, set to **Private**.
+5. Back in the SQL Editor, run these three storage RLS policies (they're at the bottom of `schema.sql`, commented out — paste them without the `--` prefix):
+   ```sql
+   create policy "own uploads read"   on storage.objects for select using (bucket_id = 'transaction-images' and (storage.foldername(name))[1] = auth.uid()::text);
+   create policy "own uploads write"  on storage.objects for insert with check (bucket_id = 'transaction-images' and (storage.foldername(name))[1] = auth.uid()::text);
+   create policy "own uploads delete" on storage.objects for delete using (bucket_id = 'transaction-images' and (storage.foldername(name))[1] = auth.uid()::text);
+   ```
+6. Go to **Project Settings → API** and copy:
+   - **Project URL** (`https://xxxx.supabase.co`)
+   - **anon / public** key (the long JWT)
 
-### 4. Run
+### 4. Wire up credentials
+
+Open `app.json` and fill in the `extra` block:
+
+```json
+"extra": {
+  "supabaseUrl": "https://xxxx.supabase.co",
+  "supabaseAnonKey": "your-anon-key",
+  "pokemonTcgApiKey": ""
+}
+```
+
+`pokemonTcgApiKey` is optional — the app works without it (rate-limited to ~1000 req/day). Free keys at [dev.pokemontcg.io](https://dev.pokemontcg.io/).
+
+### 5. Run
 
 ```bash
 npx expo start
 ```
 
-Scan the QR with **Expo Go** (iOS / Android). Sign up, create an event, tap "+ New interaction", then "+" inside any card section to launch the scanner.
+Then either:
+- Press **`i`** to open in the **iOS Simulator** (requires Xcode)
+- Scan the QR with **Expo Go** on your phone — make sure your Expo Go app version matches the SDK version shown in the terminal
+
+Sign up, create an event, tap **+ New interaction**, then **+** inside any card section to launch the scanner.
 
 ---
 
