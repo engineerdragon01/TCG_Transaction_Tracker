@@ -1,5 +1,7 @@
-import { Stack } from 'expo-router';
-import { palette } from '@/lib/theme';
+import { Stack } from "expo-router";
+import { palette } from "@/lib/theme";
+
+// hi
 
 export default function AuthLayout() {
   return (
