@@ -103,6 +103,19 @@ select
 from public.interactions i;
 
 -- ============================================================
+-- PostgREST grants (required for Supabase Data API / JS client)
+-- ============================================================
+-- Tables created via raw SQL don't get these automatically.
+
+grant usage on schema public to anon, authenticated;
+
+grant select, insert, update, delete on public.events             to authenticated;
+grant select, insert, update, delete on public.interactions       to authenticated;
+grant select, insert, update, delete on public.interaction_cards  to authenticated;
+grant select, insert, update, delete on public.interaction_images to authenticated;
+grant select                         on public.interaction_summary to authenticated;
+
+-- ============================================================
 -- Row Level Security
 -- ============================================================
 
