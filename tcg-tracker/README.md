@@ -6,17 +6,43 @@ Built with **Expo (React Native) + Supabase**.
 
 ---
 
-## What it does (MVP scope)
+## User workflow
 
-- **Auth.** Email + password via Supabase, session persisted with AsyncStorage.
-- **Events.** Each show is an event with name, location, dates, notes.
-- **Interactions.** Inside an event, log a **trade**, **sale**, or **buy**. Each interaction tracks:
-  - cards going `in` (you received) and `out` (you gave)
-  - cash in / cash out + payment method (cash / Venmo / Zelle / etc.)
-  - counterparty, notes, timestamp
-  - attached images (Venmo screenshots, photos of cash, etc.)
-- **Card scanning.** Camera capture → OCR → query pokemontcg.io → user confirms the match. Falls back gracefully to manual search when OCR isn't wired in.
-- **Live P/L.** Event detail screen shows running net value, cash totals, and interaction count, computed from the `interaction_summary` view.
+### 1. Create an event
+Every show or convention is an **event** — give it a name, location, and dates. All transactions that day are logged under it.
+
+### 2. Log interactions
+Inside an event, each deal you make is an **interaction**. There are three types:
+
+| Type | Cards | Cash |
+|------|-------|------|
+| **Sale** | You give cards `out` | You receive cash `in` |
+| **Buy** | You receive cards `in` | You give cash `out` |
+| **Trade** | Cards flow both `in` and `out` | Optional cash to balance |
+
+For each interaction you record:
+- Cards (identified by scanning or manual search), with direction and estimated value
+- Cash in / out and payment method (cash, Venmo, Zelle, etc.)
+- Optional counterparty name, notes, and images (payment screenshots, cash photos)
+
+### 3. Identify cards
+Tap **+** in the cards section to open the scanner:
+1. Point the camera at the card — the image is captured and sent through OCR
+2. OCR text is parsed for a card name and set number (`NNN/NNN` pattern)
+3. Results from pokemontcg.io are shown as thumbnails — tap the right one to confirm
+4. The confirmed card's name, set, rarity, and market value are saved automatically
+
+If OCR isn't available (Expo Go / simulator), the flow skips straight to manual search — type the name and set number to get the same candidate list.
+
+### 4. Track P/L
+The event detail screen shows a running **net value** across all interactions:
+
+```
+net value = (cash received + value of cards received)
+          − (cash paid    + value of cards given)
+```
+
+Positive = you made money. This is computed live from the `interaction_summary` database view — the app never recalculates it client-side.
 
 ---
 
@@ -111,16 +137,39 @@ sql/schema.sql             Postgres schema + RLS + view + policies
 ### Data model
 
 ```
-auth.users (Supabase)
-└── events
-    └── interactions  (type: trade | sale | buy, cash_in, cash_out, ...)
-        ├── interaction_cards   (direction: in | out, tcg_card_id, value, ...)
-        └── interaction_images  (kind: card | cash | screenshot | other)
+auth.users            — Supabase built-in auth
+└── events            — one per show/convention
+    └── interactions  — one per deal (type: trade | sale | buy)
+        ├── interaction_cards   — one row per card line item
+        └── interaction_images  — attached photos/screenshots
 ```
 
-One row per card in `interaction_cards`, with a `direction` column. That single column is what makes the same table handle all three transaction types cleanly: a trade has rows on both `in` and `out`, a sale has only `out` cards (+ `cash_in`), a buy has only `in` cards (+ `cash_out`).
+#### Key design: the `direction` column
 
-Net P/L is computed in the `interaction_summary` view so the app never has to recompute it.
+`interaction_cards` has a single `direction` enum (`in` | `out`) — *in* means you received the card, *out* means you gave it. This one column makes a single table cleanly handle all three transaction types:
+
+| Interaction type | `interaction_cards` rows | Cash fields |
+|---|---|---|
+| Sale | `out` cards only | `cash_in` set |
+| Buy | `in` cards only | `cash_out` set |
+| Trade | both `in` and `out` | either/both, or zero |
+
+Each card row stores the pokemontcg.io canonical `tcg_card_id`, card name, set, rarity, estimated market value, quantity, and optionally a `scan_image_url` pointing to the user's own photo in Supabase Storage.
+
+#### `interaction_summary` view
+
+A Postgres view that computes net P/L per interaction so the app never has to:
+
+```sql
+net_value = (cash_in  + sum(value × qty) for direction = 'in')
+          − (cash_out + sum(value × qty) for direction = 'out')
+```
+
+The view is `SECURITY INVOKER` so it inherits RLS from the underlying `interactions` table — users only ever see their own rows.
+
+#### RLS policy pattern
+
+Every table has RLS enabled. Policies on `events` and `interactions` gate on `auth.uid() = user_id`. Policies on `interaction_cards` and `interaction_images` gate via a subquery to `interactions`, since those child tables don't carry a direct `user_id`.
 
 ### Card identification pipeline
 
