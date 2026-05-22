@@ -78,7 +78,7 @@ create index interaction_images_interaction_id_idx on public.interaction_images(
 -- Positive net_value = you made money on this interaction.
 -- (cash_in + value of cards received) - (cash_out + value of cards given)
 
-create or replace view public.interaction_summary as
+create or replace view public.interaction_summary with (security_invoker = true) as
 select
   i.id,
   i.event_id,
