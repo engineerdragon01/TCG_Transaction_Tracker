@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Alert,
+  View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Alert, ActionSheetIOS, Platform,
 } from 'react-native';
 import { Stack, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,14 +34,28 @@ export default function EventsList() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  function openSettings() {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Cancel', 'Log out'], cancelButtonIndex: 0, destructiveButtonIndex: 1 },
+        (i) => { if (i === 1) signOut(); },
+      );
+    } else {
+      Alert.alert('Settings', undefined, [
+        { text: 'Log out', style: 'destructive', onPress: () => signOut() },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
+  }
+
   return (
     <>
       <Stack.Screen
         options={{
           title: 'Events',
           headerRight: () => (
-            <Pressable onPress={() => signOut()} hitSlop={12}>
-              <Ionicons name="log-out-outline" size={22} color={palette.textMuted} />
+            <Pressable onPress={openSettings} hitSlop={12}>
+              <Ionicons name="settings-outline" size={22} color={palette.textMuted} />
             </Pressable>
           ),
         }}
